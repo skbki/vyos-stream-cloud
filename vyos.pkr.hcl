@@ -228,14 +228,42 @@ build {
       "genisoimage -output $TEST_DIR/seed.iso -volid cidata -joliet -rock $TEST_DIR/user-data $TEST_DIR/meta-data 2>&1 | grep -v Warning || true",
       
       # Boot test with timeout
-      "echo 'Booting image with cloud-init NoCloud datasource (60 second test)...'",
-      "timeout 60 qemu-system-x86_64 -m 2048 -smp 2 -enable-kvm -nographic -drive file=${var.output_dir}/${var.vm_name}.qcow2,format=qcow2,if=virtio -drive file=$TEST_DIR/seed.iso,media=cdrom -net nic,model=virtio -net user > $TEST_DIR/boot.log 2>&1 || true",
+      # Use serial output to file and monitor mode for proper console capture
+      "echo 'Booting image with cloud-init NoCloud datasource (90 second test)...'",
+      "timeout 90 qemu-system-x86_64 \\",
+      "  -m 2048 \\",
+      "  -smp 2 \\",
+      "  -enable-kvm \\",
+      "  -nographic \\",
+      "  -drive file=${var.output_dir}/${var.vm_name}.qcow2,format=qcow2,if=virtio \\",
+      "  -drive file=$TEST_DIR/seed.iso,media=cdrom \\",
+      "  -net nic,model=virtio \\",
+      "  -net user \\",
+      "  -serial file:$TEST_DIR/boot.log \\",
+      "  || true",
+      
+      # Wait a moment for file to be written
+      "sleep 2",
+      
+      # Check if boot log has content
+      "echo ''",
+      "echo 'Boot log size:' $(wc -c < $TEST_DIR/boot.log 2>/dev/null || echo '0') 'bytes'",
       
       # Check results
       "echo ''",
       "echo 'Analyzing boot log...'",
-      "if grep -q 'cloud-init' $TEST_DIR/boot.log; then echo '✓ Cloud-init detected'; else echo '⚠ Cloud-init not clearly detected'; fi",
-      "if grep -q 'vyos-test' $TEST_DIR/boot.log; then echo '✓ Hostname configured'; else echo '⚠ Hostname not detected'; fi",
+      "if [ -s $TEST_DIR/boot.log ]; then",
+      "  if grep -q 'cloud-init' $TEST_DIR/boot.log; then echo '✓ Cloud-init detected'; else echo '⚠ Cloud-init not clearly detected'; fi",
+      "  if grep -q 'vyos-test' $TEST_DIR/boot.log; then echo '✓ Hostname configured'; else echo '⚠ Hostname not detected'; fi",
+      "  if grep -qi 'login:' $TEST_DIR/boot.log; then echo '✓ System reached login prompt'; else echo '⚠ Login prompt not detected'; fi",
+      "else",
+      "  echo '⚠ Boot log is empty - boot may have failed or output not captured'",
+      "fi",
+      
+      # Show last 50 lines of boot log for debugging
+      "echo ''",
+      "echo 'Last 50 lines of boot log:'",
+      "tail -n 50 $TEST_DIR/boot.log 2>/dev/null || echo '(boot log empty or not found)'",
       
       # Cleanup
       "rm -rf $TEST_DIR",
