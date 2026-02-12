@@ -52,6 +52,18 @@ variable "cpus" {
   description = "Number of CPUs"
 }
 
+variable "ssh_username" {
+  type    = string
+  default = "vyos"
+  description = "SSH username for VyOS"
+}
+
+variable "ssh_password" {
+  type    = string
+  default = "vyos"
+  description = "SSH password for VyOS"
+}
+
 source "qemu" "vyos" {
   # ISO Configuration
   iso_url          = var.iso_url
@@ -74,30 +86,37 @@ source "qemu" "vyos" {
   disk_interface   = "virtio"
   
   # Boot Configuration
-  boot_wait        = "10s"
+  boot_wait        = "5s"
   boot_command     = [
-    "<enter><wait30>",
-    "vyos<enter><wait>",
-    "vyos<enter><wait>",
-    "install image<enter><wait>",
-    "<enter><wait>",
-    "<enter><wait>",
-    "<enter><wait>",
-    "<enter><wait>",
-    "yes<enter><wait30>",
-    "<enter><wait>",
-    "<enter><wait>",
-    "vyos<enter><wait>",
-    "vyos<enter><wait10>",
-    "reboot<enter><wait>",
-    "yes<enter><wait60>",
+    "<enter>",
+    "<wait60s>",
+    "${var.ssh_username}<enter><wait>",
+    "${var.ssh_password}<enter><wait>",
+    "configure<enter><wait>",
+    "set interfaces ethernet eth0 address 'dhcp'<enter><wait>",
+    "set system name-server '8.8.8.8'<enter><wait>",
+    "set service ssh port '22'<enter><wait>",
+    "commit<enter><wait2s>",
+    "save<enter><wait2s>",
+    "exit<enter><wait1s>",
+    "install image<enter><wait3s>",
+    "Yes<enter><wait3s>",
+    "<enter><wait3s>",
+    "${var.ssh_password}<enter><wait>",
+    "${var.ssh_password}<enter><wait>",
+    "K<enter><wait3s>",
+    "<enter><wait2s>",
+    "Y<enter><wait3s>",
+    "Y<enter><wait3s>",
+    "1<enter><wait3s>",
+    "<enter><wait10s>",
   ]
   
   # SSH Configuration
-  ssh_username     = "vyos"
-  ssh_password     = "vyos"
-  ssh_timeout      = "20m"
-  ssh_wait_timeout = "20m"
+  ssh_username     = var.ssh_username
+  ssh_password     = var.ssh_password
+  ssh_timeout      = "30m"
+  ssh_wait_timeout = "30m"
   
   # Shutdown Configuration
   shutdown_command = "sudo poweroff"
