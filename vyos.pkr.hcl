@@ -146,31 +146,19 @@ build {
   # Configure VyOS and install cloud-init and qemu-guest-agent
   provisioner "shell" {
     inline = [
-      "source /opt/vyatta/etc/functions/script-template",
-      "configure",
-      
-      # Install cloud-init and qemu-guest-agent
-      "set system package repository community",
-      "set system package repository community distribution bookworm",
-      "set system package repository community components 'main contrib non-free'",
-      "set system package repository community url 'http://deb.debian.org/debian'",
-      "commit",
-      "save",
-      "exit",
+      # Add Debian repository directly to apt sources (VyOS doesn't have 'set system package repository')
+      "sudo bash -c 'echo \"deb http://deb.debian.org/debian bookworm main contrib non-free\" > /etc/apt/sources.list.d/debian.list'",
+      "sudo bash -c 'echo \"deb-src http://deb.debian.org/debian bookworm main contrib non-free\" >> /etc/apt/sources.list.d/debian.list'",
       
       # Install packages
       "sudo apt-get update",
       "sudo apt-get install -y cloud-init qemu-guest-agent",
       
-      # Remove community repository after package installation (security best practice)
+      # Remove temporary Debian repository after package installation (security best practice)
       # Note: Packages are pre-installed; cloud-init will manage system from cloud metadata
       # If future package updates are needed, repository can be re-added via cloud-init/config management
-      "source /opt/vyatta/etc/functions/script-template",
-      "configure",
-      "delete system package repository community || true",
-      "commit",
-      "save",
-      "exit",
+      "sudo rm -f /etc/apt/sources.list.d/debian.list",
+      "sudo apt-get update",
       
       # Configure cloud-init and serial console
       "source /opt/vyatta/etc/functions/script-template",
