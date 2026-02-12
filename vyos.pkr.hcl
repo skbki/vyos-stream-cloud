@@ -67,7 +67,7 @@ variable "ssh_password" {
 variable "console_type" {
   type    = string
   default = "S"
-  description = "Console type: S for Serial (recommended for cloud), K for KVM"
+  description = "Console type during install: S for Serial (cloud), K for KVM (graphical)"
 }
 
 source "qemu" "vyos" {
@@ -162,10 +162,12 @@ build {
       "sudo apt-get update",
       "sudo apt-get install -y cloud-init qemu-guest-agent",
       
-      # Remove community repository after package installation
+      # Remove community repository after package installation (security best practice)
+      # Note: Packages are pre-installed; cloud-init will manage system from cloud metadata
+      # If future package updates are needed, repository can be re-added via cloud-init/config management
       "source /opt/vyatta/etc/functions/script-template",
       "configure",
-      "delete system package repository community",
+      "delete system package repository community || true",
       "commit",
       "save",
       "exit",

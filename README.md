@@ -242,8 +242,22 @@ qemu-system-x86_64 \
 Edit `vyos.pkr.hcl` to change:
 - Disk size: Change `disk_size` variable
 - Memory/CPU: Change `memory` and `cpus` variables
+- Console type: Set `console_type = "K"` for KVM console instead of Serial
 - Additional packages: Add to the provisioner shell scripts
 - Cloud-init configuration: Modify the cloud-init setup provisioner
+
+### Package Management Note
+
+The build removes the Debian community repository after installing `cloud-init` and `qemu-guest-agent` as a security best practice. This prevents unintended package updates and reduces the attack surface.
+
+**If you need the repository available in the final image:**
+1. Comment out the "delete system package repository community" line in `vyos.pkr.hcl`
+2. Or re-add it post-deployment via cloud-init user-data or configuration management
+
+**For package updates on deployed systems:**
+- Use cloud-init to configure repositories during instance initialization
+- Or manage via Ansible/Terraform/other config management tools
+- The image has essential packages pre-installed; most cloud workflows don't need additional repos
 
 ### Change Build Schedule
 
