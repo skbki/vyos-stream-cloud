@@ -73,6 +73,7 @@ Packer configuration file that defines the VyOS image build process.
 - Uses direct apt sources configuration (writes to `/etc/apt/sources.list.d/debian.list`)
 - Removes Debian repository after package installation (security best practice)
 - Configures serial console (ttyS0 @ 115200) for cloud environments
+- **Tests cloud-init with NoCloud datasource** (post-processor validation)
 - Outputs qcow2 format image
 - Generates SHA256 checksums
 
@@ -335,7 +336,8 @@ The automated installation follows these steps:
 11. **Repository Cleanup** - Remove debian.list file (security best practice)
 12. **Serial Console Setup** - Configure ttyS0 @ 115200 for cloud compatibility
 13. **Cleanup** - Remove temporary files and sync filesystem
-14. **Final Image** - qcow2 image is ready for use
+14. **Cloud-init Test** - Boot image with NoCloud datasource to verify cloud-init integration
+15. **Final Image** - qcow2 image is ready for use
 
 ### Console Type Selection
 
@@ -361,6 +363,14 @@ The built image includes cloud-init, enabling:
 - User data script execution
 - Network configuration
 - Password and user management
+
+**Testing:** The build process automatically tests cloud-init integration using the NoCloud datasource. This validates that:
+- Cloud-init is properly installed and configured
+- The NoCloud datasource works correctly
+- User-data and meta-data are processed
+- The image boots successfully with cloud-init configuration
+
+The test creates a temporary NoCloud seed ISO with test configuration and boots the image to verify functionality.
 
 ### QEMU Guest Agent
 

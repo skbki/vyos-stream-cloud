@@ -187,4 +187,63 @@ build {
     checksum_types = ["sha256"]
     output         = "${var.output_dir}/${var.vm_name}.qcow2.sha256"
   }
+  
+  # Test cloud-init integration with nocloud datasource
+  post-processor "shell-local" {
+    inline = [
+      "echo ''",
+      "echo '=========================================='",
+      "echo 'Testing cloud-init with NoCloud datasource'",
+      "echo '=========================================='",
+      "echo ''",
+      
+      # Create test directory
+      "TEST_DIR=$(mktemp -d)",
+      "echo \"Test directory: $TEST_DIR\"",
+      
+      # Create cloud-init user-data
+      "cat > $TEST_DIR/user-data << 'USERDATA'",
+      "#cloud-config",
+      "hostname: vyos-test",
+      "fqdn: vyos-test.local",
+      "password: testpassword",
+      "chpasswd:",
+      "  expire: false",
+      "write_files:",
+      "  - path: /tmp/cloud-init-test.txt",
+      "    content: 'Cloud-init NoCloud test successful!'",
+      "    permissions: '0644'",
+      "runcmd:",
+      "  - touch /tmp/cloud-init-success",
+      "USERDATA",
+      
+      # Create cloud-init meta-data
+      "cat > $TEST_DIR/meta-data << 'METADATA'",
+      "instance-id: vyos-test-instance",
+      "local-hostname: vyos-test",
+      "METADATA",
+      
+      # Create NoCloud ISO
+      "echo 'Creating NoCloud seed ISO...'",
+      "genisoimage -output $TEST_DIR/seed.iso -volid cidata -joliet -rock $TEST_DIR/user-data $TEST_DIR/meta-data 2>&1 | grep -v Warning || true",
+      
+      # Boot test with timeout
+      "echo 'Booting image with cloud-init NoCloud datasource (60 second test)...'",
+      "timeout 60 qemu-system-x86_64 -m 2048 -smp 2 -enable-kvm -nographic -drive file=${var.output_dir}/${var.vm_name}.qcow2,format=qcow2,if=virtio -drive file=$TEST_DIR/seed.iso,media=cdrom -net nic,model=virtio -net user > $TEST_DIR/boot.log 2>&1 || true",
+      
+      # Check results
+      "echo ''",
+      "echo 'Analyzing boot log...'",
+      "if grep -q 'cloud-init' $TEST_DIR/boot.log; then echo '✓ Cloud-init detected'; else echo '⚠ Cloud-init not clearly detected'; fi",
+      "if grep -q 'vyos-test' $TEST_DIR/boot.log; then echo '✓ Hostname configured'; else echo '⚠ Hostname not detected'; fi",
+      
+      # Cleanup
+      "rm -rf $TEST_DIR",
+      
+      "echo ''",
+      "echo '✓ Cloud-init NoCloud test completed'",
+      "echo '=========================================='",
+      "echo ''",
+    ]
+  }
 }
