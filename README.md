@@ -13,7 +13,7 @@ This repository provides a complete DevOps pipeline for building VyOS Stream clo
 - 📦 **Cloud-ready images** with cloud-init and qemu-guest-agent pre-installed
 - 🔄 **Scheduled builds** with cron triggers (optional)
 - 📤 **Automatic releases** to GitHub Releases
-- 🔍 **Latest ISO detection** by scraping vyos.net
+- 🔍 **Latest ISO detection** by scraping vyos.net Stream releases
 
 ## Repository Structure
 
@@ -38,7 +38,7 @@ To use this repository, you need:
 
 ### 1. `scripts/get_iso.py`
 
-Python script that scrapes the VyOS website to find the latest nightly build ISO URL.
+Python script that scrapes the VyOS website to find the latest Stream release ISO URL (e.g., 2025.11).
 
 **Usage:**
 ```bash
@@ -253,8 +253,8 @@ Cirrus CI should provide KVM-enabled containers for public repositories. If KVM 
 
 ### ISO download fails
 
-The `get_iso.py` script scrapes vyos.net for the latest ISO. If it fails:
-- Check if vyos.net is accessible
+The `get_iso.py` script scrapes vyos.net for the latest Stream release ISO. If it fails:
+- Check if vyos.net/get/stream/ is accessible
 - Verify the page structure hasn't changed
 - Manually specify an ISO URL:
   ```bash
