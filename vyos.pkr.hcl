@@ -139,9 +139,8 @@ build {
       # Configure cloud-init
       "source /opt/vyatta/etc/functions/script-template",
       "configure",
-      "set system login user vyos authentication public-keys cloud-init type ssh-rsa",
-      "set system login user vyos authentication public-keys cloud-init key AAAAB3NzaC1yc2EAAAADAQABAAABAQC",
-      "delete system login user vyos authentication public-keys cloud-init",
+      # Note: SSH keys will be managed by cloud-init at boot time
+      # The VyOS user is already configured from installation
       "commit",
       "save",
       "exit"

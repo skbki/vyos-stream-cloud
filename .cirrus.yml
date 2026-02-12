@@ -93,13 +93,14 @@ kvm_build_task:
   
   # Upload artifacts to Cirrus CI (for testing)
   artifacts:
-    path: "output/vyos-stream.qcow2.tar.gz"
-    path: "output/*.sha256"
+    paths:
+      - "output/vyos-stream.qcow2.tar.gz"
+      - "output/*.sha256"
   
   # Upload to GitHub Releases
   # Note: This requires GITHUB_TOKEN to be set as an encrypted variable
   upload_release_script: |
-    if [ -z "$GITHUB_TOKEN" ] || [ "$GITHUB_TOKEN" = "!change_this_to_your_encrypted_token!" ]; then
+    if [ -z "$GITHUB_TOKEN" ]; then
       echo "GITHUB_TOKEN not set, skipping GitHub release upload"
       echo "To enable GitHub releases, set GITHUB_TOKEN as an encrypted variable in Cirrus CI"
       exit 0
