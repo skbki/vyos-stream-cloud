@@ -33,7 +33,8 @@ kvm_build_task:
       curl \
       unzip \
       wget \
-      jq
+      jq \
+      genisoimage
     
     # Install Python dependencies
     pip3 install requests
@@ -76,6 +77,16 @@ kvm_build_task:
     
     # List the output
     ls -lh output/
+  
+  test_cloud_init_script: |
+    cd $CIRRUS_WORKING_DIR
+    
+    echo "Testing cloud-init integration with nocloud datasource..."
+    chmod +x scripts/test_cloud_init.sh
+    ./scripts/test_cloud_init.sh output/vyos-stream.qcow2
+    
+    echo ""
+    echo "Cloud-init test completed successfully!"
   
   prepare_release_script: |
     cd $CIRRUS_WORKING_DIR
