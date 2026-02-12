@@ -69,8 +69,9 @@ Packer configuration file that defines the VyOS image build process.
      - "Y" to confirm deletion of data
      - "Y" to use all free space
      - "1" to select first boot option
-- Installs `cloud-init` and `qemu-guest-agent` from Debian community repository
-- Removes community repository after package installation (security best practice)
+- Installs `cloud-init` and `qemu-guest-agent` from Debian bookworm repository
+- Uses direct apt sources configuration (writes to `/etc/apt/sources.list.d/debian.list`)
+- Removes Debian repository after package installation (security best practice)
 - Configures serial console (ttyS0 @ 115200) for cloud environments
 - Outputs qcow2 format image
 - Generates SHA256 checksums
@@ -329,9 +330,9 @@ The automated installation follows these steps:
    - Select boot loader option (1)
    - Wait for installation to complete and reboot
 8. **Post-Installation** - System reboots into installed VyOS
-9. **Repository Configuration** - Add Debian community repository temporarily
-10. **Package Installation** - Install cloud-init and qemu-guest-agent
-11. **Repository Cleanup** - Remove community repository (security best practice)
+9. **Repository Setup** - Write Debian bookworm repository to `/etc/apt/sources.list.d/debian.list`
+10. **Package Installation** - Install cloud-init and qemu-guest-agent via apt
+11. **Repository Cleanup** - Remove debian.list file (security best practice)
 12. **Serial Console Setup** - Configure ttyS0 @ 115200 for cloud compatibility
 13. **Cleanup** - Remove temporary files and sync filesystem
 14. **Final Image** - qcow2 image is ready for use
