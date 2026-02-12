@@ -64,6 +64,12 @@ variable "ssh_password" {
   description = "SSH password for VyOS"
 }
 
+variable "console_type" {
+  type    = string
+  default = "S"
+  description = "Console type: S for Serial (recommended for cloud), K for KVM"
+}
+
 source "qemu" "vyos" {
   # ISO Configuration
   iso_url          = var.iso_url
@@ -104,7 +110,7 @@ source "qemu" "vyos" {
     "<enter><wait3s>",
     "${var.ssh_password}<enter><wait>",
     "${var.ssh_password}<enter><wait>",
-    "K<enter><wait3s>",
+    "${var.console_type}<enter><wait3s>",
     "<enter><wait2s>",
     "Y<enter><wait3s>",
     "Y<enter><wait3s>",
@@ -156,11 +162,21 @@ build {
       "sudo apt-get update",
       "sudo apt-get install -y cloud-init qemu-guest-agent",
       
-      # Configure cloud-init
+      # Remove community repository after package installation
+      "source /opt/vyatta/etc/functions/script-template",
+      "configure",
+      "delete system package repository community",
+      "commit",
+      "save",
+      "exit",
+      
+      # Configure cloud-init and serial console
       "source /opt/vyatta/etc/functions/script-template",
       "configure",
       # Note: SSH keys will be managed by cloud-init at boot time
       # The VyOS user is already configured from installation
+      # Configure serial console for cloud environments
+      "set system console device ttyS0 speed '115200'",
       "commit",
       "save",
       "exit"

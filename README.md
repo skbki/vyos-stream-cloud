@@ -64,13 +64,14 @@ Packer configuration file that defines the VyOS image build process.
      - "Yes" to continue installation
      - Use default image name
      - Set password
-     - "K" for KVM console (not serial)
+     - "S" for Serial console (recommended for cloud) or "K" for KVM
      - Use default disk (vda)
      - "Y" to confirm deletion of data
      - "Y" to use all free space
      - "1" to select first boot option
-- Installs `cloud-init` and `qemu-guest-agent`
-- Configures Debian repository for package installation
+- Installs `cloud-init` and `qemu-guest-agent` from Debian community repository
+- Removes community repository after package installation (security best practice)
+- Configures serial console (ttyS0 @ 115200) for cloud environments
 - Outputs qcow2 format image
 - Generates SHA256 checksums
 
@@ -84,6 +85,7 @@ Packer configuration file that defines the VyOS image build process.
 - `cpus`: Number of CPUs (default: "2")
 - `ssh_username`: SSH username (default: "vyos")
 - `ssh_password`: SSH password (default: "vyos")
+- `console_type`: Console type - "S" for Serial (default, cloud), "K" for KVM
 
 ### 3. `.cirrus.yml`
 
@@ -306,16 +308,35 @@ The automated installation follows these steps:
    - Confirm installation with "Yes"
    - Accept default image name
    - Set root password (twice)
-   - Select KVM console ("K" not serial)
+   - Select Serial console ("S" - recommended for cloud environments)
    - Accept default disk (vda)
    - Confirm data deletion ("Y")
    - Confirm using all free space ("Y")
    - Select boot loader option (1)
    - Wait for installation to complete and reboot
 8. **Post-Installation** - System reboots into installed VyOS
-9. **Provisioning** - Cloud-init and qemu-guest-agent are installed
-10. **Cleanup** - Remove temporary files and sync filesystem
-11. **Final Image** - qcow2 image is ready for use
+9. **Repository Configuration** - Add Debian community repository temporarily
+10. **Package Installation** - Install cloud-init and qemu-guest-agent
+11. **Repository Cleanup** - Remove community repository (security best practice)
+12. **Serial Console Setup** - Configure ttyS0 @ 115200 for cloud compatibility
+13. **Cleanup** - Remove temporary files and sync filesystem
+14. **Final Image** - qcow2 image is ready for use
+
+### Console Type Selection
+
+This build uses **serial console** (ttyS0) as the default, which is the recommended choice for cloud images:
+
+**Why Serial Console?**
+- ✅ **Cloud compatibility**: All major cloud providers (AWS, Azure, GCP, OpenStack) use serial console
+- ✅ **Automation friendly**: Works with cloud-init and automated provisioning tools
+- ✅ **Remote access**: Access via `virsh console` or cloud provider console
+- ✅ **Out-of-band management**: Compatible with IPMI/BMC for bare-metal
+- ✅ **Universal support**: Works across all hypervisors and platforms
+
+**When to use KVM console?**
+- Desktop virtualization with GUI tools (Virt-Manager, Proxmox web UI)
+- Local development with graphical console access
+- Override by setting `console_type = "K"` in Packer build
 
 ### Cloud-init Support
 
