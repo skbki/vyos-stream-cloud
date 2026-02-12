@@ -1,6 +1,15 @@
 // VyOS Stream QCOW2 Image Builder for Packer
 // This configuration builds a VyOS Stream qcow2 image with cloud-init and qemu-guest-agent
 
+packer {
+  required_plugins {
+    qemu = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/qemu"
+    }
+  }
+}
+
 variable "iso_url" {
   type    = string
   default = env("VYOS_ISO_URL")
