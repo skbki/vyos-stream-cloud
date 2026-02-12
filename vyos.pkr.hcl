@@ -113,6 +113,7 @@ source "qemu" "vyos" {
   ]
   
   # SSH Configuration
+  # Increased timeout to 30m to accommodate slower systems and installation time
   ssh_username     = var.ssh_username
   ssh_password     = var.ssh_password
   ssh_timeout      = "30m"
