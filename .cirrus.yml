@@ -2,7 +2,7 @@
 # Uses KVM-enabled container for fast QEMU builds
 
 env:
-  PACKER_VERSION: "1.10.0"
+  PACKER_VERSION: "1.15.0"
   GITHUB_TOKEN: ENCRYPTED[!change_this_to_your_encrypted_token!]
 
 # Use KVM-enabled container
