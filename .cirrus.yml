@@ -69,7 +69,6 @@ kvm_build_task:
     source /tmp/vyos_env.sh
     
     # Build the qcow2 image with Packer
-    # This includes cloud-init testing via post-processor
     packer init vyos.pkr.hcl || true
     packer build \
       -var "iso_url=${VYOS_ISO_URL}" \

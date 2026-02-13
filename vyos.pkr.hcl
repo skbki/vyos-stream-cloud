@@ -1,5 +1,5 @@
 // VyOS Stream QCOW2 Image Builder for Packer
-// This configuration builds a VyOS Stream qcow2 image with cloud-init and qemu-guest-agent
+// This configuration builds a VyOS Stream qcow2 image with qemu-guest-agent
 
 packer {
   required_plugins {
@@ -100,7 +100,6 @@ source "qemu" "vyos" {
     "${var.ssh_password}<enter><wait>",
     "configure<enter><wait>",
     "set interfaces ethernet eth0 address 'dhcp'<enter><wait>",
-    "set system name-server '8.8.8.8'<enter><wait>",
     "set service ssh port '22'<enter><wait>",
     "commit<enter><wait2s>",
     "save<enter><wait2s>",
@@ -134,144 +133,9 @@ source "qemu" "vyos" {
 
 build {
   sources = ["source.qemu.vyos"]
-  
-  # Wait for system to be ready
-  provisioner "shell" {
-    inline = [
-      "echo 'Waiting for system to be ready...'",
-      "sleep 10"
-    ]
-  }
-  
-  # Configure VyOS and install cloud-init and qemu-guest-agent
-  provisioner "shell" {
-    inline = [
-      # Add Debian repository directly to apt sources (VyOS doesn't have 'set system package repository')
-      "sudo bash -c 'echo \"deb http://deb.debian.org/debian bookworm main contrib non-free\" > /etc/apt/sources.list.d/debian.list'",
-      "sudo bash -c 'echo \"deb-src http://deb.debian.org/debian bookworm main contrib non-free\" >> /etc/apt/sources.list.d/debian.list'",
-      
-      # Install packages
-      "sudo apt-get update",
-      "sudo apt-get install -y cloud-init qemu-guest-agent",
-      
-      # Remove temporary Debian repository after package installation (security best practice)
-      # Note: Packages are pre-installed; cloud-init will manage system from cloud metadata
-      # If future package updates are needed, repository can be re-added via cloud-init/config management
-      "sudo rm -f /etc/apt/sources.list.d/debian.list",
-      "sudo apt-get update",
-      
-      # Configure cloud-init and serial console
-      "source /opt/vyatta/etc/functions/script-template",
-      "configure",
-      # Note: SSH keys will be managed by cloud-init at boot time
-      # The VyOS user is already configured from installation
-      # Configure serial console for cloud environments
-      "set system console device ttyS0 speed '115200'",
-      "commit",
-      "save",
-      "exit"
-    ]
-  }
-  
-  # Clean up
-  provisioner "shell" {
-    inline = [
-      "sudo apt-get clean",
-      "sudo rm -rf /var/lib/apt/lists/*",
-      "sudo rm -f /home/vyos/.ssh/authorized_keys",
-      "sudo sync"
-    ]
-  }
-  
+
   post-processor "checksum" {
     checksum_types = ["sha256"]
     output         = "${var.output_dir}/${var.vm_name}.qcow2.sha256"
-  }
-  
-  # Test cloud-init integration with nocloud datasource
-  post-processor "shell-local" {
-    inline = [
-      "echo ''",
-      "echo '=========================================='",
-      "echo 'Testing cloud-init with NoCloud datasource'",
-      "echo '=========================================='",
-      "echo ''",
-      
-      # Create test directory
-      "TEST_DIR=$(mktemp -d)",
-      "echo \"Test directory: $TEST_DIR\"",
-      
-      # Create cloud-init user-data
-      "cat > $TEST_DIR/user-data << 'USERDATA'",
-      "#cloud-config",
-      "hostname: vyos-test",
-      "fqdn: vyos-test.local",
-      "password: testpassword",
-      "chpasswd:",
-      "  expire: false",
-      "write_files:",
-      "  - path: /tmp/cloud-init-test.txt",
-      "    content: 'Cloud-init NoCloud test successful!'",
-      "    permissions: '0644'",
-      "runcmd:",
-      "  - touch /tmp/cloud-init-success",
-      "USERDATA",
-      
-      # Create cloud-init meta-data
-      "cat > $TEST_DIR/meta-data << 'METADATA'",
-      "instance-id: vyos-test-instance",
-      "local-hostname: vyos-test",
-      "METADATA",
-      
-      # Create NoCloud ISO
-      "echo 'Creating NoCloud seed ISO...'",
-      "genisoimage -output $TEST_DIR/seed.iso -volid cidata -joliet -rock $TEST_DIR/user-data $TEST_DIR/meta-data 2>&1 | grep -v Warning || true",
-      
-      # Boot test with timeout
-      # Use serial output to file and monitor mode for proper console capture
-      "echo 'Booting image with cloud-init NoCloud datasource (90 second test)...'",
-      "timeout 90 qemu-system-x86_64 \\",
-      "  -m 2048 \\",
-      "  -smp 2 \\",
-      "  -enable-kvm \\",
-      "  -nographic \\",
-      "  -drive file=${var.output_dir}/${var.vm_name}.qcow2,format=qcow2,if=virtio \\",
-      "  -drive file=$TEST_DIR/seed.iso,media=cdrom \\",
-      "  -net nic,model=virtio \\",
-      "  -net user \\",
-      "  -serial file:$TEST_DIR/boot.log \\",
-      "  || true",
-      
-      # Wait a moment for file to be written
-      "sleep 2",
-      
-      # Check if boot log has content
-      "echo ''",
-      "echo 'Boot log size:' $(wc -c < $TEST_DIR/boot.log 2>/dev/null || echo '0') 'bytes'",
-      
-      # Check results
-      "echo ''",
-      "echo 'Analyzing boot log...'",
-      "if [ -s $TEST_DIR/boot.log ]; then",
-      "  if grep -q 'cloud-init' $TEST_DIR/boot.log; then echo '✓ Cloud-init detected'; else echo '⚠ Cloud-init not clearly detected'; fi",
-      "  if grep -q 'vyos-test' $TEST_DIR/boot.log; then echo '✓ Hostname configured'; else echo '⚠ Hostname not detected'; fi",
-      "  if grep -qi 'login:' $TEST_DIR/boot.log; then echo '✓ System reached login prompt'; else echo '⚠ Login prompt not detected'; fi",
-      "else",
-      "  echo '⚠ Boot log is empty - boot may have failed or output not captured'",
-      "fi",
-      
-      # Show last 50 lines of boot log for debugging
-      "echo ''",
-      "echo 'Last 50 lines of boot log:'",
-      "tail -n 50 $TEST_DIR/boot.log 2>/dev/null || echo '(boot log empty or not found)'",
-      
-      # Cleanup
-      "rm -rf $TEST_DIR",
-      
-      "echo ''",
-      "echo '✓ Cloud-init NoCloud test completed'",
-      "echo '=========================================='",
-      "echo ''",
-    ]
   }
 }

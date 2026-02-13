@@ -10,8 +10,7 @@ This repository provides a complete DevOps pipeline for building VyOS Stream clo
 
 - 🚀 **Automated builds** using Cirrus CI with free KVM acceleration
 - ⚡ **Fast builds** thanks to KVM hardware acceleration
-- 📦 **Cloud-ready images** with cloud-init and qemu-guest-agent pre-installed
-- 🔄 **Scheduled builds** with cron triggers (optional)
+-  **Scheduled builds** with cron triggers (optional)
 - 📤 **Automatic releases** to GitHub Releases
 - 🔍 **Latest ISO detection** by scraping vyos.net Stream releases
 
@@ -69,11 +68,7 @@ Packer configuration file that defines the VyOS image build process.
      - "Y" to confirm deletion of data
      - "Y" to use all free space
      - "1" to select first boot option
-- Installs `cloud-init` and `qemu-guest-agent` from Debian bookworm repository
-- Uses direct apt sources configuration (writes to `/etc/apt/sources.list.d/debian.list`)
-- Removes Debian repository after package installation (security best practice)
 - Configures serial console (ttyS0 @ 115200) for cloud environments
-- **Tests cloud-init with NoCloud datasource** (post-processor validation)
 - Outputs qcow2 format image
 - Generates SHA256 checksums
 
@@ -246,20 +241,6 @@ Edit `vyos.pkr.hcl` to change:
 - Memory/CPU: Change `memory` and `cpus` variables
 - Console type: Set `console_type = "K"` for KVM console instead of Serial
 - Additional packages: Add to the provisioner shell scripts
-- Cloud-init configuration: Modify the cloud-init setup provisioner
-
-### Package Management Note
-
-The build removes the Debian community repository after installing `cloud-init` and `qemu-guest-agent` as a security best practice. This prevents unintended package updates and reduces the attack surface.
-
-**If you need the repository available in the final image:**
-1. Comment out the "delete system package repository community" line in `vyos.pkr.hcl`
-2. Or re-add it post-deployment via cloud-init user-data or configuration management
-
-**For package updates on deployed systems:**
-- Use cloud-init to configure repositories during instance initialization
-- Or manage via Ansible/Terraform/other config management tools
-- The image has essential packages pre-installed; most cloud workflows don't need additional repos
 
 ### Change Build Schedule
 
@@ -331,13 +312,8 @@ The automated installation follows these steps:
    - Select boot loader option (1)
    - Wait for installation to complete and reboot
 8. **Post-Installation** - System reboots into installed VyOS
-9. **Repository Setup** - Write Debian bookworm repository to `/etc/apt/sources.list.d/debian.list`
-10. **Package Installation** - Install cloud-init and qemu-guest-agent via apt
-11. **Repository Cleanup** - Remove debian.list file (security best practice)
-12. **Serial Console Setup** - Configure ttyS0 @ 115200 for cloud compatibility
-13. **Cleanup** - Remove temporary files and sync filesystem
-14. **Cloud-init Test** - Boot image with NoCloud datasource to verify cloud-init integration
-15. **Final Image** - qcow2 image is ready for use
+9. **Serial Console Setup** - Configure ttyS0 @ 115200 for cloud compatibility
+10. **Final Image** - qcow2 image is ready for use
 
 ### Console Type Selection
 
@@ -354,31 +330,6 @@ This build uses **serial console** (ttyS0) as the default, which is the recommen
 - Desktop virtualization with GUI tools (Virt-Manager, Proxmox web UI)
 - Local development with graphical console access
 - Override by setting `console_type = "K"` in Packer build
-
-### Cloud-init Support
-
-The built image includes cloud-init, enabling:
-- Dynamic hostname configuration
-- SSH key injection
-- User data script execution
-- Network configuration
-- Password and user management
-
-**Testing:** The build process automatically tests cloud-init integration using the NoCloud datasource. This validates that:
-- Cloud-init is properly installed and configured
-- The NoCloud datasource works correctly
-- User-data and meta-data are processed
-- The image boots successfully with cloud-init configuration
-
-The test creates a temporary NoCloud seed ISO with test configuration and boots the image to verify functionality.
-
-### QEMU Guest Agent
-
-The qemu-guest-agent enables:
-- Better VM lifecycle management
-- File system freeze/thaw for snapshots
-- Guest information reporting
-- Time synchronization
 
 ## Contributing
 
