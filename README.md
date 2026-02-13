@@ -13,6 +13,17 @@ This repository provides a complete DevOps pipeline for building VyOS Stream clo
 -  **Scheduled builds** with cron triggers (optional)
 - 📤 **Automatic releases** to GitHub Releases
 - 🔍 **Latest ISO detection** by scraping vyos.net Stream releases
+- 📦 **VyOS naming convention** - releases and builds follow the same naming as official VyOS ISOs (e.g., `vyos-2025.11-cloud-init-amd64.qcow2`)
+
+## Naming Convention
+
+This project follows the VyOS official naming convention:
+- **Release tag**: `vyos-VERSION-cloud-init-amd64` (e.g., `vyos-2025.11-cloud-init-amd64`)
+- **QCOW2 image**: `vyos-VERSION-cloud-init-amd64.qcow2` (e.g., `vyos-2025.11-cloud-init-amd64.qcow2`)
+- **Compressed archive**: `vyos-VERSION-cloud-init-amd64.qcow2.tar.gz`
+- **Checksum file**: `vyos-VERSION-cloud-init-amd64.qcow2.sha256`
+
+The version (e.g., `2025.11`) is automatically extracted from the VyOS ISO filename during the build process.
 
 ## Repository Structure
 
@@ -76,7 +87,7 @@ Packer configuration file that defines the VyOS image build process.
 - `iso_url`: URL to VyOS ISO (from environment or default)
 - `iso_checksum`: ISO checksum (default: "none" to skip verification)
 - `output_dir`: Output directory for built image (default: "output")
-- `vm_name`: Name of output image (default: "vyos-stream")
+- `vm_name`: Name of output image (default: "vyos-stream", but automatically set to "vyos-VERSION-cloud-init-amd64" during CI builds)
 - `disk_size`: VM disk size (default: "10G")
 - `memory`: VM memory in MB (default: "2048")
 - `cpus`: Number of CPUs (default: "2")
@@ -195,17 +206,17 @@ This will build daily at 2 AM UTC.
 
 ## Using the Built Image
 
-The built qcow2 image can be used in various cloud and virtualization platforms:
+The built qcow2 image can be used in various cloud and virtualization platforms. The image will be named following the VyOS convention: `vyos-VERSION-cloud-init-amd64.qcow2` (e.g., `vyos-2025.11-cloud-init-amd64.qcow2`).
 
 ### OpenStack
 
 ```bash
 openstack image create \
-  --file output/vyos-stream.qcow2 \
+  --file output/vyos-2025.11-cloud-init-amd64.qcow2 \
   --disk-format qcow2 \
   --container-format bare \
   --public \
-  vyos-stream
+  vyos-2025.11
 ```
 
 ### KVM/Libvirt
@@ -215,7 +226,7 @@ openstack image create \
 virt-install \
   --name vyos-test \
   --ram 2048 \
-  --disk path=output/vyos-stream.qcow2,format=qcow2 \
+  --disk path=output/vyos-2025.11-cloud-init-amd64.qcow2,format=qcow2 \
   --vcpus 2 \
   --network network=default \
   --import
@@ -228,7 +239,7 @@ qemu-system-x86_64 \
   -enable-kvm \
   -m 2048 \
   -smp 2 \
-  -drive file=output/vyos-stream.qcow2,format=qcow2 \
+  -drive file=output/vyos-2025.11-cloud-init-amd64.qcow2,format=qcow2 \
   -net nic -net user
 ```
 
