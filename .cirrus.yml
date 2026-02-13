@@ -15,7 +15,6 @@ kvm_build_task:
     memory: 8GB
     # Enable KVM support
     kvm: "true"
-  accel_check_script: emulator -accel-check
     
   # Cron trigger - build daily at 2 AM UTC
   # Format: "cron expression" BRANCH_NAME
