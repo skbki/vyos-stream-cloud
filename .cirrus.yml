@@ -1,0 +1,126 @@
+# Cirrus CI Configuration for VyOS Stream QCOW2 Build
+# Uses KVM-enabled container for fast QEMU builds
+
+env:
+  PACKER_VERSION: "1.15.0"
+  GITHUB_TOKEN: ENCRYPTED[69b9547a6e3a2052285f1be212f7ce162321322f729b118117a87b2df2275e59a8a1b341deeaf6b822f47abd9bbd38d3]
+
+# Use KVM-enabled container
+kvm_build_task:
+  
+  # Use a container with nested virtualization support
+  container:
+    image: ubuntu:22.04
+    cpu: 4
+    memory: 8GB
+    # Enable KVM support
+    kvm: "true"
+    
+  # Cron trigger - build daily at 2 AM UTC
+  # Format: "cron expression" BRANCH_NAME
+  # Uncomment the line below to enable scheduled builds
+  # trigger_type: cron
+  # cron: "0 2 * * *"
+  
+  install_dependencies_script: |
+    apt-get update
+    apt-get install -y \
+      qemu-system-x86 \
+      qemu-utils \
+      qemu-kvm \
+      python3 \
+      python3-pip \
+      curl \
+      unzip \
+      wget \
+      jq \
+      genisoimage
+    
+    # Install Python dependencies
+    pip3 install requests
+    
+    # Install Packer
+    cd /tmp
+    wget -q https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip
+    unzip packer_${PACKER_VERSION}_linux_amd64.zip
+    mv packer /usr/local/bin/
+    chmod +x /usr/local/bin/packer
+    packer version
+  
+  check_kvm_script: |
+    # Verify KVM is available
+    if [ -e /dev/kvm ]; then
+      echo "KVM is available"
+      ls -la /dev/kvm
+    else
+      echo "Warning: KVM not available, build will be slower"
+    fi
+  
+  get_iso_script: |
+    # Get the latest VyOS ISO URL
+    cd $CIRRUS_WORKING_DIR
+    chmod +x scripts/get_iso.py
+    VYOS_ISO_URL=$(python3 scripts/get_iso.py)
+    echo "VyOS ISO URL: $VYOS_ISO_URL"
+    echo "export VYOS_ISO_URL='$VYOS_ISO_URL'" >> /tmp/vyos_env.sh
+  
+  build_qcow2_script: |
+    cd $CIRRUS_WORKING_DIR
+    source /tmp/vyos_env.sh
+    
+    # Build the qcow2 image with Packer
+    packer init vyos.pkr.hcl || true
+    PACKER_LOG=1 packer build \
+      -var "iso_url=${VYOS_ISO_URL}" \
+      -var "iso_checksum=none" \
+      vyos.pkr.hcl
+    
+    # List the output
+    ls -lh output/
+  
+  prepare_release_script: |
+    cd $CIRRUS_WORKING_DIR
+    
+    # Get current date for release tag
+    RELEASE_TAG="vyos-stream-$(date +%Y%m%d-%H%M)"
+    echo "Release tag: $RELEASE_TAG"
+    echo "export RELEASE_TAG='$RELEASE_TAG'" >> /tmp/vyos_env.sh
+    
+    # Create release archive
+    cd output
+    tar -czf vyos-stream.qcow2.tar.gz *.qcow2
+    sha256sum *.qcow2 > vyos-stream.qcow2.sha256
+    ls -lh
+  
+  # Upload artifacts to Cirrus CI (for testing)
+  artifacts:
+    paths:
+      - "output/vyos-stream.qcow2.tar.gz"
+      - "output/*.sha256"
+  
+  # Upload to GitHub Releases
+  # Note: This requires GITHUB_TOKEN to be set as an encrypted variable
+  upload_release_script: |
+    if [ -z "$GITHUB_TOKEN" ]; then
+      echo "GITHUB_TOKEN not set, skipping GitHub release upload"
+      echo "To enable GitHub releases, set GITHUB_TOKEN as an encrypted variable in Cirrus CI"
+      exit 0
+    fi
+    
+    cd $CIRRUS_WORKING_DIR
+    source /tmp/vyos_env.sh
+    
+    # Install GitHub CLI
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+    apt-get update
+    apt-get install -y gh
+    
+    # Create GitHub release and upload artifacts
+    gh release create "$RELEASE_TAG" \
+      --repo "$CIRRUS_REPO_FULL_NAME" \
+      --title "VyOS Stream Build $RELEASE_TAG" \
+      --notes "Automated build of VyOS Stream qcow2 image" \
+      output/vyos-stream.qcow2.tar.gz \
+      output/*.sha256 \
+      || echo "Release creation failed or already exists"
