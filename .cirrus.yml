@@ -3,7 +3,7 @@
 
 env:
   PACKER_VERSION: "1.15.0"
-  GITHUB_TOKEN: ENCRYPTED[!change_this_to_your_encrypted_token!]
+  GITHUB_TOKEN: ENCRYPTED[69b9547a6e3a2052285f1be212f7ce162321322f729b118117a87b2df2275e59a8a1b341deeaf6b822f47abd9bbd38d3]
 
 # Use KVM-enabled container
 kvm_build_task:
