@@ -7,14 +7,15 @@ env:
 
 # Use KVM-enabled container
 kvm_build_task:
-  # Enable KVM support
-  kvm_enabled: true
   
   # Use a container with nested virtualization support
   container:
     image: ubuntu:22.04
     cpu: 4
     memory: 8GB
+    # Enable KVM support
+    kvm: "true"
+  accel_check_script: emulator -accel-check
     
   # Cron trigger - build daily at 2 AM UTC
   # Format: "cron expression" BRANCH_NAME
