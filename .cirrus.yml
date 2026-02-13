@@ -70,7 +70,7 @@ kvm_build_task:
     
     # Build the qcow2 image with Packer
     packer init vyos.pkr.hcl || true
-    packer build \
+    PACKER_LOG=1 packer build \
       -var "iso_url=${VYOS_ISO_URL}" \
       -var "iso_checksum=none" \
       vyos.pkr.hcl
